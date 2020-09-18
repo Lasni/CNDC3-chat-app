@@ -19,16 +19,23 @@ const publicDirectoryPath = path.join(__dirname, '../public');
 app.use(express.static(publicDirectoryPath));
 
 // testing socket.io (server-side)
-const welcomeMessage = 'Welcome!'
 io.on('connection', (socket) => {
-	console.log('New websocket connection');
-	// Default emit to a new client
-	socket.emit('welcomeMessage', welcomeMessage)
-
-	// Listen for 'sendMessage' and emit to all
-	socket.on('sendMessage', (message) => {
-		io.emit('message', message)
-	})
+  console.log('New websocket connection');
+  // Default emit
+  socket.emit('message', 'Welcome!'); // sends to a SINGLE new client
+  socket.broadcast.emit('message', 'A new user has joined'); // sends to EVERY connected client EXCEPT the sender
+  // Listen for 'sendMessage' and emit to all
+  socket.on('sendMessage', (message) => {
+    io.emit('message', message); // sends to EVERY connected client
+  });
+  // Listen for 'sendLocation' and emit to all
+  socket.on('sendLocation', (coords) => {
+    io.emit('message', `https://google.com/maps?q=${coords.latitude},${coords.longitude}`);
+  });
+  // Listen for a disconnect
+  socket.on('disconnect', () => {
+    io.emit('message', 'A user has left');
+  });
 });
 
 // Run the server

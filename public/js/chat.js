@@ -1,27 +1,31 @@
 // Client-side script
 const socket = io();
 const messageForm = document.querySelector('#message-form');
-const input = document.querySelector('input');
+const sendLocationButton = document.querySelector('#send-location');
 
-socket.on('welcomeMessage', (welcomeMessage) => {
-  console.log(welcomeMessage);
+socket.on('message', (message) => {
+  console.log(message);
 });
 
+// Submit form event
 messageForm.addEventListener('submit', (e) => {
-	e.preventDefault()
-	const message = input.value
-	// console.log(message)
+  e.preventDefault();
+  const message = e.target.elements.message.value;
+  socket.emit('sendMessage', message);
+});
 
-	socket.emit('sendMessage', message)
-})
-
-
-// socket.on('countUpdated', (count) => {
-// 	console.log('The count has been updated', count)
-// })
-// document.querySelector('#increment').addEventListener('click', () => {
-// 	socket.emit('increment')
-// })
-// document.querySelector('#decrement').addEventListener('click', () => {
-// 	socket.emit('decrement')
-// })
+// Send location event
+sendLocationButton.addEventListener('click', () => {
+  // e.preventDefault()
+  if (!navigator.geolocation) {
+    return alert('Geolocation is not supported by your browser');
+  } else {
+    // is async but doesn't support promises. Use callback func.
+    navigator.geolocation.getCurrentPosition((position) => {
+      socket.emit('sendLocation', {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      });
+    });
+  }
+});
