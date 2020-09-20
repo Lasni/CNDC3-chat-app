@@ -9,21 +9,27 @@ const $messages = document.querySelector('#messages');
 // Templates
 const $messageTemplate = document.querySelector('#message-template').innerHTML;
 const $locationTemplate = document.querySelector('#location-template').innerHTML;
+// Options
+const { username, room } = Qs.parse(location.search, {
+  ignoreQueryPrefix: true
+});
 
 // message listener
 socket.on('message', (message) => {
   const html = Mustache.render($messageTemplate, {
-    message
+    message: message.text,
+    createdAt: moment(message.createdAt).format('k:m:s')
   });
-  $messages.insertAdjacentHTML('afterend', html);
+  $messages.insertAdjacentHTML('beforeend', html);
 });
 
 // locationMessage listener
-socket.on('locationMessage', (locationURL) => {
+socket.on('locationMessage', ({ locationURL, createdAt }) => {
   const html = Mustache.render($locationTemplate, {
-    locationURL
+    locationURL,
+    createdAt: moment(createdAt).format('k:m:s')
   });
-  $messages.insertAdjacentHTML('afterend', html);
+  $messages.insertAdjacentHTML('beforeend', html);
 });
 
 // Submit form event
@@ -66,3 +72,6 @@ $sendLocationButton.addEventListener('click', () => {
     });
   }
 });
+
+// Emit a join event to the server when a new user joins
+socket.emit('join', { username, room });
