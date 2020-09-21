@@ -5,6 +5,7 @@ const http = require('http');
 const socketIO = require('socket.io');
 const Filter = require('bad-words');
 const { generateMessage, generateLocationMessage } = require('./utils/messages');
+const { addUser, removeUser, getUser, getUsersInRoom } = require('./utils/users');
 
 // Create the app
 const app = express();
@@ -25,32 +26,46 @@ io.on('connection', (socket) => {
   console.log('New websocket connection');
 
   // Listen for a user join
-  socket.on('join', ({ username, room }) => {
-    socket.join(room);
+  socket.on('join', ({ username, room }, callback) => {
+    const { error, user } = addUser({ id: socket.id, username, room });
+
+    if (error) {
+      return callback(error);
+    }
+
+    socket.join(user.room);
     // Default emit
-    socket.emit('message', generateMessage('Welcome!')); // sends to a SINGLE new client
-    socket.broadcast.to(room).emit('message', generateMessage(`${username} has joined the room.`)); // sends to EVERY connected client EXCEPT the sender
+    socket.emit('message', generateMessage('Admin', 'Welcome!')); // sends to a SINGLE new client
+    socket.broadcast.to(user.room).emit('message', generateMessage('Admin', `${user.username} has joined the room.`)); // sends to EVERY connected client EXCEPT the sender
+    callback();
   });
 
   // Listen for 'sendMessage' and emit to all
   socket.on('sendMessage', (message, callback) => {
+    console.log('sendMessage', message);
     const filter = new Filter();
+    const user = getUser(socket.id);
     if (filter.isProfane(message)) {
       return callback('Profanity not allowed here.'); // optional error message in callback() for client
     }
-    io.to('redrum').emit('message', generateMessage(message)); // sends to EVERY connected client
+    io.to(user.room).emit('message', generateMessage(user.username, message)); // sends to EVERY connected client inside specific room
     callback(); // acknowledgment function
   });
 
   // Listen for 'sendLocation' and emit to all
   socket.on('sendLocation', (coords, callback) => {
-    io.emit('locationMessage', generateLocationMessage(coords));
+    const user = getUser(socket.id);
+    io.to(user.room).emit('locationMessage', generateLocationMessage(user.username, coords));
     callback(); // call the client's callback function, letting them know you caught the signal
   });
 
   // Listen for a disconnect
   socket.on('disconnect', () => {
-    io.emit('message', generateMessage('A user has left'));
+    const user = removeUser(socket.id);
+
+    if (user) {
+      io.to(user.room).emit('message', generateMessage('Admin', `${user.username} has left the chat.`));
+    }
   });
 });
 

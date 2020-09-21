@@ -15,17 +15,19 @@ const { username, room } = Qs.parse(location.search, {
 });
 
 // message listener
-socket.on('message', (message) => {
+socket.on('message', ({ username, text, createdAt }) => {
   const html = Mustache.render($messageTemplate, {
-    message: message.text,
-    createdAt: moment(message.createdAt).format('k:m:s')
+    username,
+    text,
+    createdAt: moment(createdAt).format('k:m:s')
   });
   $messages.insertAdjacentHTML('beforeend', html);
 });
 
 // locationMessage listener
-socket.on('locationMessage', ({ locationURL, createdAt }) => {
+socket.on('locationMessage', ({ username, locationURL, createdAt }) => {
   const html = Mustache.render($locationTemplate, {
+    username,
     locationURL,
     createdAt: moment(createdAt).format('k:m:s')
   });
@@ -44,7 +46,7 @@ $messageForm.addEventListener('submit', (e) => {
     if (error) {
       return console.log(error);
     } else {
-      console.log('Message delivered');
+      console.log('Message delivered', message);
     }
   });
 });
@@ -74,4 +76,9 @@ $sendLocationButton.addEventListener('click', () => {
 });
 
 // Emit a join event to the server when a new user joins
-socket.emit('join', { username, room });
+socket.emit('join', { username, room }, (error) => {
+  if (error) {
+    alert(error);
+    location.href = '/';
+  }
+});
