@@ -35,8 +35,12 @@ io.on('connection', (socket) => {
 
     socket.join(user.room);
     // Default emit
-    socket.emit('message', generateMessage('Admin', 'Welcome!')); // sends to a SINGLE new client
+    socket.emit('message', generateMessage('Admin', `Welcome to ${user.room}, ${user.username}!`)); // sends to a SINGLE new client
     socket.broadcast.to(user.room).emit('message', generateMessage('Admin', `${user.username} has joined the room.`)); // sends to EVERY connected client EXCEPT the sender
+    io.to(user.room).emit('roomData', {
+      room: user.room,
+      users: getUsersInRoom(user.room)
+    });
     callback();
   });
 
@@ -48,23 +52,30 @@ io.on('connection', (socket) => {
     if (filter.isProfane(message)) {
       return callback('Profanity not allowed here.'); // optional error message in callback() for client
     }
-    io.to(user.room).emit('message', generateMessage(user.username, message)); // sends to EVERY connected client inside specific room
-    callback(); // acknowledgment function
+    if (user) {
+      io.to(user.room).emit('message', generateMessage(user.username, message)); // sends to EVERY connected client inside specific room
+      callback(); // acknowledgment function
+    }
   });
 
   // Listen for 'sendLocation' and emit to all
   socket.on('sendLocation', (coords, callback) => {
     const user = getUser(socket.id);
-    io.to(user.room).emit('locationMessage', generateLocationMessage(user.username, coords));
-    callback(); // call the client's callback function, letting them know you caught the signal
+    if (user) {
+      io.to(user.room).emit('locationMessage', generateLocationMessage(user.username, coords));
+      callback(); // call the client's callback function, letting them know you caught the signal
+    }
   });
 
   // Listen for a disconnect
   socket.on('disconnect', () => {
     const user = removeUser(socket.id);
-
     if (user) {
       io.to(user.room).emit('message', generateMessage('Admin', `${user.username} has left the chat.`));
+      io.to(user.room).emit('roomData', {
+        room: user.room,
+        users: getUsersInRoom(user.room)
+      });
     }
   });
 });

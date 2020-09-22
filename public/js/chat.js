@@ -9,10 +9,35 @@ const $messages = document.querySelector('#messages');
 // Templates
 const $messageTemplate = document.querySelector('#message-template').innerHTML;
 const $locationTemplate = document.querySelector('#location-template').innerHTML;
+const $sidebarTemplate = document.querySelector('#sidebar-template').innerHTML;
 // Options
 const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true
 });
+// Helper function for autoscrolling
+const autoscroll = () => {
+  // new message element
+  const $newMessage = $messages.lastElementChild;
+
+  // height of newMessage
+  const newMessageStyles = getComputedStyle($newMessage);
+  const newMessageMargin = parseInt(newMessageStyles.marginBottom);
+  const newMessageHeight = $newMessage.offsetHeight + newMessageMargin;
+
+  // visible height
+  const visibleHeight = $messages.offsetHeight;
+
+  // messages container height
+  const containerHeight = $messages.scrollHeight;
+
+  // how far have I scrolled?
+  const scrollOffSet = $messages.scrollTop + visibleHeight;
+
+  if (containerHeight - newMessageHeight <= scrollOffSet) {
+    // scrolling to the bottom
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+};
 
 // message listener
 socket.on('message', ({ username, text, createdAt }) => {
@@ -22,6 +47,7 @@ socket.on('message', ({ username, text, createdAt }) => {
     createdAt: moment(createdAt).format('k:m:s')
   });
   $messages.insertAdjacentHTML('beforeend', html);
+  autoscroll();
 });
 
 // locationMessage listener
@@ -32,6 +58,16 @@ socket.on('locationMessage', ({ username, locationURL, createdAt }) => {
     createdAt: moment(createdAt).format('k:m:s')
   });
   $messages.insertAdjacentHTML('beforeend', html);
+  autoscroll();
+});
+
+// roomData listener
+socket.on('roomData', ({ room, users }) => {
+  const html = Mustache.render($sidebarTemplate, {
+    room,
+    users
+  });
+  document.querySelector('#sidebar').innerHTML = html;
 });
 
 // Submit form event
